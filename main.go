@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 )
 
@@ -17,30 +18,48 @@ func main() {
 	// Read and process the input file
 	processFile(*inputFilePath, *definesFilePath)
 }
+
 func processFile(inputFilePath, definesFilePath string) {
-	fmt.Println("Processing file:", inputFilePath)
+	// Extract base name (without extension) for log and output files
+	baseName := strings.TrimSuffix(inputFilePath, filepath.Ext(inputFilePath))
+
+	// Create the log file path
+	logFilePath := baseName + ".fbp.log"
+	logFile, err := os.Create(logFilePath)
+	if err != nil {
+		fmt.Println("Error creating log file:", err)
+		return
+	}
+	defer logFile.Close()
+
+	// Redirect log messages to the log file
+	log := func(message string) {
+		logFile.WriteString(message + "\n")
+	}
+
+	log("Processing file: " + inputFilePath)
 
 	// Read the defines file and store key-value pairs
 	defines, err := readDefines(definesFilePath)
 	if err != nil {
-		fmt.Println("Error reading defines file:", err)
+		log("Error reading defines file: " + err.Error())
 		return
 	}
 
 	// Open the BASIC file for reading
 	inputFile, err := os.Open(inputFilePath)
 	if err != nil {
-		fmt.Println("Error opening input file:", err)
+		log("Error opening input file: " + err.Error())
 		return
 	}
 	defer inputFile.Close()
 
 	// Create a new file for the processed content
-	outputFilePath := inputFilePath + ".fbp"
-	fmt.Println("Creating output file:", outputFilePath)
+	outputFilePath := baseName + ".fbp"
+	log("Creating output file: " + outputFilePath)
 	outputFile, err := os.Create(outputFilePath)
 	if err != nil {
-		fmt.Println("Error creating output file:", err)
+		log("Error creating output file: " + err.Error())
 		return
 	}
 	defer outputFile.Close()
@@ -53,18 +72,18 @@ func processFile(inputFilePath, definesFilePath string) {
 		if processedLine != "" {
 			_, err := outputFile.WriteString(processedLine + "\n")
 			if err != nil {
-				fmt.Println("Error writing to output file:", err)
+				log("Error writing to output file: " + err.Error())
 				return
 			}
 		}
 	}
 
 	if err := scanner.Err(); err != nil {
-		fmt.Println("Error reading input file:", err)
+		log("Error reading input file: " + err.Error())
 		return
 	}
 
-	fmt.Println("File processing completed successfully.")
+	log("File processing completed successfully.")
 }
 
 func readDefines(definesFilePath string) (map[string]string, error) {
